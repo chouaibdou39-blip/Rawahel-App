@@ -1,49 +1,50 @@
 /* ============================================
-   RAWAHEL PLATFORM - Supabase Backend Integration
+   RAWAHEL PLATFORM - Complete JavaScript
+   Supabase Integration with Admin Features
    ============================================ */
 
-// ========== SUPABASE CONFIGURATION ==========
-const SUPABASE_URL = 'https://utlbdcebtcjnjzljcaqg.supabase.co'; 
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0bGJkY2VidGNqbmp6bGpjYXFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0MjE1NTcsImV4cCI6MjA4NDk5NzU1N30.uw5pMDEQz1jUNNwktcKnb2Kflrl9JycnvCCozcDYDY0';
+// ========== SUPABASE CONFIG ==========
+// IMPORTANT: Replace with your actual credentials
+const SUPABASE_URL = 'https://utlbdcebtcjnjzljcaqg.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0bGJkY2VidGNqbmp6bGpjYXFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.placeholder';
 
-// Initialize Supabase client
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Initialize Supabase
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ========== APP STATE ==========
 let currentUser = null;
-let currentUserProfile = null;
+let userProfile = null;
+let selectedGroup = 'bunyan';
+let isAdmin = false;
 
-// Group definitions
+// Group info
 const GROUPS = {
-    bunyan: { name: 'بنيان', level: 'الابتدائية', icon: 'fa-seedling' },
-    rawasi: { name: 'رواسي', level: 'المتوسطة والثانوية', icon: 'fa-mountain' },
-    rasukh: { name: 'رسوخ', level: 'الجامعية', icon: 'fa-graduation-cap' }
+    bunyan: { name: 'بنيان', icon: 'fa-seedling', color: '#34A853' },
+    rawasi: { name: 'رواسي', icon: 'fa-mountain', color: '#FBBC04' },
+    rasukh: { name: 'رسوخ', icon: 'fa-graduation-cap', color: '#EA4335' },
+    all: { name: 'الكل', icon: 'fa-users', color: '#1A73E8' }
 };
 
 // ========== INITIALIZATION ==========
-document.addEventListener('DOMContentLoaded', () => {
-    initApp();
-});
+document.addEventListener('DOMContentLoaded', initApp);
 
 async function initApp() {
     // Check for existing session
-    const { data: { session }, error } = await sb.auth.getSession();
-
+    const { data: { session } } = await supabase.auth.getSession();
+    
     if (session) {
-        // User has a session, verify whitelist
-        await handleAuthenticatedUser(session.user);
+        await handleAuthentication(session.user);
     } else {
-        // No session, check for auth callback (Magic Link)
+        // Check for magic link callback
         await handleAuthCallback();
     }
 
-    // Listen for auth state changes
-    sb.auth.onAuthStateChange(async (event, session) => {
-        console.log('Auth event:', event);
+    // Listen for auth changes
+    supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
-            await handleAuthenticatedUser(session.user);
+            await handleAuthentication(session.user);
         } else if (event === 'SIGNED_OUT') {
-            showAuth();
+            showAuthScreen();
         }
     });
 
@@ -52,175 +53,197 @@ async function initApp() {
 }
 
 async function handleAuthCallback() {
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = hashParams.get('access_token');
-
-    if (accessToken) {
-        hideLoading();
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+        // Magic link callback - wait for onAuthStateChange
         return;
     }
     hideLoading();
-    showAuth();
+    showAuthScreen();
 }
 
-async function handleAuthenticatedUser(user) {
+async function handleAuthentication(user) {
     showLoading();
-
+    
     try {
-        const { data: allowedUser, error } = await sb
+        // Check whitelist
+        const { data: profile, error } = await supabase
             .from('allowed_users')
             .select('*')
             .eq('email', user.email)
             .single();
 
-        if (error || !allowedUser) {
-            console.log('User not in whitelist:', user.email);
-            await sb.auth.signOut();
+        if (error || !profile) {
+            // User not in whitelist
+            await supabase.auth.signOut();
             hideLoading();
-            showAccessDenied();
+            showAuthError();
             return;
         }
 
+        // User is allowed
         currentUser = user;
-        currentUserProfile = allowedUser;
+        userProfile = profile;
+        isAdmin = profile.role === 'admin';
 
-        hideLoading();
-        showApp();
-
+        // Clear URL hash
         if (window.location.hash) {
             history.replaceState(null, '', window.location.pathname);
         }
 
-    } catch (err) {
-        console.error('Error checking whitelist:', err);
         hideLoading();
-        showAuth();
+        showApp();
+
+    } catch (err) {
+        console.error('Auth error:', err);
+        hideLoading();
+        showAuthScreen();
     }
 }
 
-// ========== UI STATE FUNCTIONS ==========
+// ========== UI HELPERS ==========
 function showLoading() {
     document.getElementById('loadingScreen').classList.remove('hidden');
-    document.getElementById('authOverlay').classList.add('hidden');
-    document.getElementById('appContainer').classList.remove('visible');
 }
 
 function hideLoading() {
     document.getElementById('loadingScreen').classList.add('hidden');
 }
 
-function showAuth() {
-    document.getElementById('authOverlay').classList.remove('hidden');
-    document.getElementById('appContainer').classList.remove('visible');
-    document.getElementById('authForm').classList.remove('hidden');
-    document.getElementById('authSuccess').classList.add('hidden');
-    document.getElementById('authDenied').classList.add('hidden');
+function showAuthScreen() {
+    document.getElementById('authScreen').classList.remove('hidden');
+    document.getElementById('appShell').classList.remove('active');
 }
 
-function showAccessDenied() {
-    document.getElementById('authOverlay').classList.remove('hidden');
+function showAuthError() {
+    document.getElementById('authScreen').classList.remove('hidden');
     document.getElementById('authForm').classList.add('hidden');
     document.getElementById('authSuccess').classList.add('hidden');
-    document.getElementById('authDenied').classList.remove('hidden');
+    document.getElementById('authError').classList.remove('hidden');
 }
 
-function showMagicLinkSent() {
+function showAuthSuccess() {
     document.getElementById('authForm').classList.add('hidden');
-    document.getElementById('authDenied').classList.add('hidden');
+    document.getElementById('authError').classList.add('hidden');
     document.getElementById('authSuccess').classList.remove('hidden');
 }
 
-function resetAuthForm() {
+function resetAuth() {
     document.getElementById('authForm').classList.remove('hidden');
     document.getElementById('authSuccess').classList.add('hidden');
-    document.getElementById('authDenied').classList.add('hidden');
-    document.getElementById('userEmail').value = '';
+    document.getElementById('authError').classList.add('hidden');
+    document.getElementById('emailInput').value = '';
 }
 
 async function showApp() {
-    document.getElementById('authOverlay').classList.add('hidden');
-    document.getElementById('appContainer').classList.add('visible');
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('appShell').classList.add('active');
 
-    updateUserUI();
-
-    await Promise.all([
-        loadDashboard(),
-        loadCalendar(),
-        loadForum()
-    ]);
-}
-
-// 🔥 دالة تحديث الواجهة (تم تعديلها لتظهر لوحة المدير)
-function updateUserUI() {
-    const profile = currentUserProfile;
-    const groupInfo = GROUPS[profile.group_level];
-
-    // Welcome message
-    document.getElementById('welcomeName').textContent = profile.full_name;
-    document.getElementById('welcomeGroup').textContent = groupInfo.name + ' - ' + groupInfo.level;
-    document.getElementById('userEmailDisplay').textContent = currentUser.email;
-
-    // Navigation user info
-    const userBadge = document.getElementById('userGroupBadge');
-    userBadge.textContent = groupInfo.name;
-    userBadge.className = 'user-group-badge ' + profile.group_level;
-
-    // Post form
-    document.getElementById('postFormName').textContent = profile.full_name;
-
-    // Forum group filter
-    document.getElementById('forumGroupLabel').textContent = 'مجموعة ' + groupInfo.name;
-
-    // ✅ إظهار رابط لوحة المدير إذا كان المستخدم Admin
-    if (profile.role === 'admin') {
-        const adminLink = document.getElementById('adminLink');
-        if (adminLink) {
-            adminLink.classList.remove('hidden');
-            
-            // تفعيل مستمعات الأحداث الخاصة بالإدارة هنا للتأكد من وجود العناصر
-            const addMemberForm = document.getElementById('addMemberForm');
-            if (addMemberForm) {
-                // إزالة المستمع القديم لتجنب التكرار
-                const newForm = addMemberForm.cloneNode(true);
-                addMemberForm.parentNode.replaceChild(newForm, addMemberForm);
-                newForm.addEventListener('submit', handleAddMember);
-            }
-            
-            // تحميل قائمة الأعضاء
-            loadMembersList();
-        }
+    // Show admin elements if user is admin
+    if (isAdmin) {
+        document.getElementById('adminBadge').classList.remove('hidden');
+        document.getElementById('adminNavItem').classList.remove('hidden');
+        document.getElementById('fabBtn').classList.remove('hidden');
     }
+
+    // Set initial group to user's group
+    selectedGroup = userProfile.group_level;
+    updateGroupTabs();
+
+    // Load content
+    await loadNews();
+    await loadEvents();
 }
 
-// ========== AUTH HANDLERS ==========
+function showSnackbar(message) {
+    const snackbar = document.getElementById('snackbar');
+    snackbar.textContent = message;
+    snackbar.classList.add('show');
+    setTimeout(() => snackbar.classList.remove('show'), 3000);
+}
+
+// ========== EVENT LISTENERS ==========
+function setupEventListeners() {
+    // Auth form
+    document.getElementById('authForm').addEventListener('submit', handleLogin);
+
+    // Group tabs
+    document.querySelectorAll('.group-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            selectedGroup = tab.dataset.group;
+            updateGroupTabs();
+            loadNews();
+            loadEvents();
+        });
+    });
+
+    // Bottom nav
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const sectionId = item.dataset.section;
+            switchSection(sectionId);
+            
+            // Update active nav
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            item.classList.add('active');
+        });
+    });
+
+    // Modal close on outside click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.classList.remove('active');
+            }
+        });
+    });
+}
+
+function updateGroupTabs() {
+    document.querySelectorAll('.group-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.group === selectedGroup);
+    });
+
+    // Update badges
+    const groupInfo = GROUPS[selectedGroup];
+    document.getElementById('newsGroupBadge').textContent = groupInfo.name;
+    document.getElementById('newsGroupBadge').className = `group-badge ${selectedGroup}`;
+    document.getElementById('calendarGroupBadge').textContent = groupInfo.name;
+    document.getElementById('calendarGroupBadge').className = `group-badge ${selectedGroup}`;
+}
+
+function switchSection(sectionId) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(sectionId).classList.add('active');
+}
+
+// ========== AUTHENTICATION ==========
 async function handleLogin(e) {
     e.preventDefault();
-    const email = document.getElementById('userEmail').value.trim();
+    
+    const email = document.getElementById('emailInput').value.trim();
     const loginBtn = document.getElementById('loginBtn');
-
-    if (!email) {
-        alert('يرجى إدخال البريد الإلكتروني');
-        return;
-    }
+    
+    if (!email) return;
 
     loginBtn.disabled = true;
     loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جارٍ الإرسال...';
 
     try {
-        const { data: allowedUser, error: whitelistError } = await sb
+        // Check whitelist first
+        const { data: allowed, error: checkError } = await supabase
             .from('allowed_users')
             .select('email')
             .eq('email', email)
             .single();
 
-        if (whitelistError || !allowedUser) {
-            loginBtn.disabled = false;
-            loginBtn.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال رابط الدخول';
-            showAccessDenied();
+        if (checkError || !allowed) {
+            showAuthError();
             return;
         }
 
-        const { error } = await sb.auth.signInWithOtp({
+        // Send magic link
+        const { error } = await supabase.auth.signInWithOtp({
             email: email,
             options: {
                 emailRedirectTo: window.location.origin + window.location.pathname
@@ -228,11 +251,12 @@ async function handleLogin(e) {
         });
 
         if (error) throw error;
-        showMagicLinkSent();
+
+        showAuthSuccess();
 
     } catch (err) {
         console.error('Login error:', err);
-        alert('حدث خطأ أثناء إرسال رابط الدخول. يرجى المحاولة مرة أخرى.');
+        showSnackbar('حدث خطأ، حاول مرة أخرى');
     } finally {
         loginBtn.disabled = false;
         loginBtn.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال رابط الدخول';
@@ -240,389 +264,490 @@ async function handleLogin(e) {
 }
 
 async function handleLogout() {
-    if (confirm('هل تريد تسجيل الخروج؟')) {
-        await sb.auth.signOut();
-        currentUser = null;
-        currentUserProfile = null;
-        showAuth();
-    }
+    if (!confirm('هل تريد تسجيل الخروج؟')) return;
+    
+    await supabase.auth.signOut();
+    currentUser = null;
+    userProfile = null;
+    isAdmin = false;
+    
+    // Reset UI
+    document.getElementById('adminBadge').classList.add('hidden');
+    document.getElementById('adminNavItem').classList.add('hidden');
+    document.getElementById('fabBtn').classList.add('hidden');
+    
+    showAuthScreen();
+    resetAuth();
 }
 
-// ========== EVENT LISTENERS ==========
-function setupEventListeners() {
-    document.getElementById('authForm').addEventListener('submit', handleLogin);
-    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+// ========== NEWS FEED ==========
+async function loadNews() {
+    const container = document.getElementById('newsList');
+    container.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>جارٍ التحميل...</p></div>';
 
-    document.querySelectorAll('.nav-links a').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const section = link.getAttribute('data-section');
-            if (section) navigateTo(section);
-        });
-    });
-
-    document.getElementById('mobileMenuBtn').addEventListener('click', () => {
-        document.getElementById('navLinks').classList.toggle('active');
-        const icon = document.querySelector('#mobileMenuBtn i');
-        icon.classList.toggle('fa-bars');
-        icon.classList.toggle('fa-times');
-    });
-
-    document.getElementById('addSessionBtn').addEventListener('click', openSessionModal);
-    document.getElementById('sessionForm').addEventListener('submit', handleAddSession);
-    document.getElementById('submitPostBtn').addEventListener('click', handleAddPost);
-
-    document.querySelectorAll('.modal-overlay').forEach(overlay => {
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) {
-                overlay.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        });
-    });
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            document.querySelectorAll('.modal-overlay.active').forEach(modal => {
-                modal.classList.remove('active');
-                document.body.style.overflow = '';
-            });
-        }
-    });
-}
-
-function navigateTo(section) {
-    document.querySelectorAll('.nav-links a').forEach(link => {
-        link.classList.remove('active');
-        if (link.getAttribute('data-section') === section) {
-            link.classList.add('active');
-        }
-    });
-
-    document.querySelectorAll('.section').forEach(sec => {
-        sec.classList.remove('active');
-    });
-    document.getElementById(section).classList.add('active');
-    document.getElementById('navLinks').classList.remove('active');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// ========== DASHBOARD ==========
-async function loadDashboard() {
     try {
-        const { count: sessionCount } = await sb
-            .from('calendar_events')
-            .select('*', { count: 'exact', head: true })
-            .or(`group_level.eq.${currentUserProfile.group_level},group_level.eq.all`);
-
-        const { count: postCount } = await sb
-            .from('forum_posts')
-            .select('*', { count: 'exact', head: true })
-            .eq('group_level', currentUserProfile.group_level);
-
-        document.getElementById('totalSessions').textContent = sessionCount || 0;
-        document.getElementById('totalPosts').textContent = postCount || 0;
-
-    } catch (err) {
-        console.error('Error loading dashboard:', err);
-    }
-}
-
-// ========== CALENDAR ==========
-async function loadCalendar() {
-    try {
-        document.querySelectorAll('.day-column').forEach(col => col.innerHTML = '');
-
-        const { data: events, error } = await sb
-            .from('calendar_events')
+        let query = supabase
+            .from('posts')
             .select('*')
-            .or(`group_level.eq.${currentUserProfile.group_level},group_level.eq.all`)
-            .order('time', { ascending: true });
-
-        if (error) throw error;
-
-        events.forEach(event => addSessionToCalendar(event));
-
-    } catch (err) {
-        console.error('Error loading calendar:', err);
-    }
-}
-
-function addSessionToCalendar(session) {
-    const column = document.querySelector(`.day-column[data-day="${session.day}"]`);
-    if (!column) return;
-
-    const canDelete = session.created_by === currentUser.email || currentUserProfile.role === 'admin';
-
-    const card = document.createElement('div');
-    card.className = `session-card ${session.group_level}`;
-    card.innerHTML = `
-        <div class="session-time"><i class="fas fa-clock"></i> ${session.time}</div>
-        <div class="session-subject">${session.subject}</div>
-        <div class="session-teacher">${session.teacher || 'غير محدد'}</div>
-        ${canDelete ? `<button class="session-delete" onclick="deleteSession('${session.id}')" title="حذف"><i class="fas fa-trash"></i></button>` : ''}
-    `;
-    column.appendChild(card);
-}
-
-function openSessionModal() {
-    document.getElementById('sessionGroup').value = currentUserProfile.group_level;
-    document.getElementById('sessionModal').classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeSessionModal() {
-    document.getElementById('sessionModal').classList.remove('active');
-    document.body.style.overflow = '';
-    document.getElementById('sessionForm').reset();
-}
-
-async function handleAddSession(e) {
-    e.preventDefault();
-    const session = {
-        day: document.getElementById('sessionDay').value,
-        time: document.getElementById('sessionTime').value,
-        duration: parseInt(document.getElementById('sessionDuration').value) || 60,
-        subject: document.getElementById('sessionSubject').value,
-        teacher: document.getElementById('sessionTeacher').value,
-        group_level: document.getElementById('sessionGroup').value,
-        created_by: currentUser.email
-    };
-
-    try {
-        const { error } = await sb.from('calendar_events').insert([session]);
-        if (error) throw error;
-        closeSessionModal();
-        await loadCalendar();
-        await loadDashboard();
-    } catch (err) {
-        console.error('Error adding session:', err);
-        alert('حدث خطأ أثناء إضافة الحصة');
-    }
-}
-
-async function deleteSession(id) {
-    if (!confirm('هل تريد حذف هذه الحصة؟')) return;
-    try {
-        const { error } = await sb.from('calendar_events').delete().eq('id', id);
-        if (error) throw error;
-        await loadCalendar();
-        await loadDashboard();
-    } catch (err) {
-        console.error('Error deleting session:', err);
-        alert('حدث خطأ أثناء حذف الحصة');
-    }
-}
-
-// ========== FORUM ==========
-async function loadForum() {
-    const container = document.getElementById('forumPosts');
-    container.innerHTML = '<div class="loading-posts"><div class="loading-spinner small"></div><p>جارٍ تحميل المنشورات...</p></div>';
-
-    try {
-        const { data: posts, error } = await sb
-            .from('forum_posts')
-            .select('*')
-            .eq('group_level', currentUserProfile.group_level)
+            .order('pinned', { ascending: false })
             .order('created_at', { ascending: false });
+
+        // Filter by group (admins see selected group, members see their group)
+        if (!isAdmin) {
+            query = query.or(`group_level.eq.${userProfile.group_level},group_level.eq.all`);
+        } else {
+            query = query.or(`group_level.eq.${selectedGroup},group_level.eq.all`);
+        }
+
+        const { data: posts, error } = await query;
 
         if (error) throw error;
 
         if (!posts || posts.length === 0) {
-            container.innerHTML = '<div class="no-posts"><i class="fas fa-comments"></i><p>لا توجد منشورات في مجموعتك حالياً<br>كن أول من يشارك!</p></div>';
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-newspaper"></i>
+                    <p>لا توجد أخبار حالياً</p>
+                </div>
+            `;
             return;
         }
 
-        container.innerHTML = posts.map(post => createPostHTML(post)).join('');
+        container.innerHTML = posts.map(post => createPostCard(post)).join('');
 
     } catch (err) {
-        console.error('Error loading forum:', err);
-        container.innerHTML = '<div class="no-posts"><i class="fas fa-exclamation-triangle"></i><p>حدث خطأ أثناء تحميل المنشورات</p></div>';
+        console.error('Load news error:', err);
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>خطأ في التحميل</p></div>';
     }
 }
 
-function createPostHTML(post) {
-    const groupInfo = GROUPS[post.group_level];
+function createPostCard(post) {
     const date = formatDate(post.created_at);
-    const canDelete = post.author_email === currentUser.email;
-
+    const groupInfo = GROUPS[post.group_level];
+    
     return `
-        <div class="post-card" data-id="${post.id}">
-            <div class="post-header">
-                <div class="post-avatar"><i class="fas fa-user"></i></div>
-                <div class="post-meta">
-                    <div class="post-author">${post.author_name} <span class="post-group-badge ${post.group_level}">${groupInfo.name}</span></div>
-                    <div class="post-date">${date}</div>
+        <div class="card ${post.pinned ? 'pinned' : ''}" data-id="${post.id}">
+            <div class="card-header">
+                <div class="card-avatar">
+                    <i class="fas fa-user"></i>
                 </div>
-                ${canDelete ? `<button class="post-delete-btn" onclick="deletePost('${post.id}')" title="حذف"><i class="fas fa-trash"></i></button>` : ''}
+                <div class="card-meta">
+                    <div class="card-author">
+                        ${post.author_name}
+                        ${post.pinned ? '<span class="pin-badge">مثبت</span>' : ''}
+                    </div>
+                    <div class="card-date">${date}</div>
+                </div>
+                <span class="group-badge ${post.group_level}">${groupInfo.name}</span>
             </div>
-            <div class="post-content">${post.content}</div>
+            <div class="card-body">
+                <h3 class="card-title">${escapeHtml(post.title)}</h3>
+                <p class="card-content">${escapeHtml(post.content)}</p>
+            </div>
+            ${isAdmin ? `
+                <div class="card-actions">
+                    <button class="btn btn-text" onclick="deletePost('${post.id}')">
+                        <i class="fas fa-trash"></i>
+                        حذف
+                    </button>
+                </div>
+            ` : ''}
         </div>
     `;
 }
 
-async function handleAddPost() {
+async function submitPost() {
+    const title = document.getElementById('postTitle').value.trim();
     const content = document.getElementById('postContent').value.trim();
-    if (!content) { alert('يرجى كتابة محتوى المنشور'); return; }
+    const group = document.getElementById('postGroup').value;
+    const pinned = document.getElementById('postPinned').checked;
 
-    const submitBtn = document.getElementById('submitPostBtn');
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جارٍ النشر...';
-
-    const post = {
-        content: content,
-        author_name: currentUserProfile.full_name,
-        author_email: currentUser.email,
-        group_level: currentUserProfile.group_level
-    };
+    if (!title || !content) {
+        showSnackbar('يرجى ملء جميع الحقول');
+        return;
+    }
 
     try {
-        const { error } = await sb.from('forum_posts').insert([post]);
+        const { error } = await supabase.from('posts').insert({
+            title: title,
+            content: content,
+            group_level: group,
+            pinned: pinned,
+            author_name: userProfile.full_name,
+            author_email: currentUser.email
+        });
+
         if (error) throw error;
-        document.getElementById('postContent').value = '';
-        await loadForum();
-        await loadDashboard();
+
+        closeModal('postModal');
+        document.getElementById('postForm').reset();
+        showSnackbar('تم نشر الإعلان بنجاح');
+        loadNews();
+
     } catch (err) {
-        console.error('Error adding post:', err);
-        alert('حدث خطأ أثناء نشر المنشور');
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> نشر';
+        console.error('Submit post error:', err);
+        showSnackbar('حدث خطأ، حاول مرة أخرى');
     }
 }
 
 async function deletePost(id) {
-    if (!confirm('هل تريد حذف هذا المنشور؟')) return;
+    if (!confirm('هل تريد حذف هذا الإعلان؟')) return;
+
     try {
-        const { error } = await sb.from('forum_posts').delete().eq('id', id);
+        const { error } = await supabase.from('posts').delete().eq('id', id);
         if (error) throw error;
-        await loadForum();
-        await loadDashboard();
+
+        showSnackbar('تم الحذف');
+        loadNews();
+
     } catch (err) {
-        console.error('Error deleting post:', err);
-        alert('حدث خطأ أثناء حذف المنشور');
+        console.error('Delete post error:', err);
+        showSnackbar('حدث خطأ');
     }
 }
 
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now - date;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return 'الآن';
-    if (minutes < 60) return `منذ ${minutes} دقيقة`;
-    if (hours < 24) return `منذ ${hours} ساعة`;
-    if (days < 7) return `منذ ${days} يوم`;
-    return date.toLocaleDateString('ar-DZ');
-}
-
-// ========== AWRAD MODALS ==========
-const modalMap = { morning: 'modalMorning', evening: 'modalEvening', wird: 'modalWird' };
-
-function openAwrad(type) {
-    const modalId = modalMap[type];
-    const modal = document.getElementById(modalId);
-    if (modal) { modal.classList.add('active'); document.body.style.overflow = 'hidden'; }
-}
-
-function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) { modal.classList.remove('active'); document.body.style.overflow = ''; }
-}
-
-// ========== ✅ ADMIN FUNCTIONS (NEW) ==========
-
-async function loadMembersList() {
-    const tbody = document.getElementById('membersTableBody');
-    // التأكد من وجود الجدول قبل محاولة تعديله
-    if (!tbody) return; 
-    
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">جارٍ التحميل...</td></tr>';
+// ========== CALENDAR EVENTS ==========
+async function loadEvents() {
+    const container = document.getElementById('eventsList');
+    container.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>جارٍ التحميل...</p></div>';
 
     try {
-        const { data: members, error } = await sb
+        let query = supabase
+            .from('calendar_events')
+            .select('*')
+            .gte('event_date', new Date().toISOString().split('T')[0])
+            .order('event_date', { ascending: true });
+
+        // Filter by group
+        if (!isAdmin) {
+            query = query.or(`group_level.eq.${userProfile.group_level},group_level.eq.all`);
+        } else {
+            query = query.or(`group_level.eq.${selectedGroup},group_level.eq.all`);
+        }
+
+        const { data: events, error } = await query;
+
+        if (error) throw error;
+
+        if (!events || events.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-calendar"></i>
+                    <p>لا توجد فعاليات قادمة</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = events.map(event => createEventCard(event)).join('');
+
+    } catch (err) {
+        console.error('Load events error:', err);
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>خطأ في التحميل</p></div>';
+    }
+}
+
+function createEventCard(event) {
+    const date = new Date(event.event_date);
+    const day = date.getDate();
+    const month = date.toLocaleDateString('ar', { month: 'short' });
+    const groupInfo = GROUPS[event.group_level];
+
+    return `
+        <div class="event-card" data-id="${event.id}">
+            <div class="event-date-box">
+                <div class="event-day">${day}</div>
+                <div class="event-month">${month}</div>
+            </div>
+            <div class="event-details">
+                <h4 class="event-title">${escapeHtml(event.title)}</h4>
+                <div class="event-info">
+                    ${event.event_time ? `<span><i class="fas fa-clock"></i> ${event.event_time}</span>` : ''}
+                    ${event.location ? `<span><i class="fas fa-map-marker-alt"></i> ${event.location}</span>` : ''}
+                    <span class="group-badge ${event.group_level}">${groupInfo.name}</span>
+                </div>
+                ${event.description ? `<p style="margin-top: 8px; font-size: 13px; color: #5F6368;">${escapeHtml(event.description)}</p>` : ''}
+            </div>
+            ${isAdmin ? `
+                <div class="event-actions">
+                    <button class="btn-icon" onclick="deleteEvent('${event.id}')" title="حذف">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+async function submitEvent() {
+    const title = document.getElementById('eventTitle').value.trim();
+    const description = document.getElementById('eventDescription').value.trim();
+    const eventDate = document.getElementById('eventDate').value;
+    const eventTime = document.getElementById('eventTime').value;
+    const location = document.getElementById('eventLocation').value.trim();
+    const group = document.getElementById('eventGroup').value;
+
+    if (!title || !eventDate) {
+        showSnackbar('يرجى ملء الحقول المطلوبة');
+        return;
+    }
+
+    try {
+        const { error } = await supabase.from('calendar_events').insert({
+            title: title,
+            description: description || null,
+            event_date: eventDate,
+            event_time: eventTime || null,
+            location: location || null,
+            group_level: group,
+            author_email: currentUser.email
+        });
+
+        if (error) throw error;
+
+        closeModal('eventModal');
+        document.getElementById('eventForm').reset();
+        showSnackbar('تم إضافة الفعالية بنجاح');
+        loadEvents();
+
+    } catch (err) {
+        console.error('Submit event error:', err);
+        showSnackbar('حدث خطأ، حاول مرة أخرى');
+    }
+}
+
+async function deleteEvent(id) {
+    if (!confirm('هل تريد حذف هذه الفعالية؟')) return;
+
+    try {
+        const { error } = await supabase.from('calendar_events').delete().eq('id', id);
+        if (error) throw error;
+
+        showSnackbar('تم الحذف');
+        loadEvents();
+
+    } catch (err) {
+        console.error('Delete event error:', err);
+        showSnackbar('حدث خطأ');
+    }
+}
+
+// ========== USER MANAGEMENT ==========
+async function loadUsersManagement() {
+    const container = document.getElementById('usersManagement');
+    const list = document.getElementById('usersList');
+    
+    container.classList.remove('hidden');
+    list.innerHTML = '<div style="padding: 20px; text-align: center;"><i class="fas fa-spinner fa-spin"></i></div>';
+
+    try {
+        const { data: users, error } = await supabase
             .from('allowed_users')
             .select('*')
             .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        tbody.innerHTML = '';
-        members.forEach(member => {
-            const groupName = GROUPS[member.group_level] ? GROUPS[member.group_level].name : member.group_level;
-            const row = `
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 10px;">${member.full_name} ${member.role === 'admin' ? '⭐' : ''}</td>
-                    <td style="padding: 10px; font-size: 0.9em;">${member.email}</td>
-                    <td style="padding: 10px;"><span class="post-group-badge ${member.group_level}">${groupName}</span></td>
-                    <td style="padding: 10px;">
-                        ${member.role !== 'admin' ? 
-                        `<button onclick="deleteMember('${member.email}')" style="color: red; background: none; border: none; cursor: pointer;">
-                            <i class="fas fa-trash"></i>
-                        </button>` : ''}
-                    </td>
-                </tr>
-            `;
-            tbody.innerHTML += row;
-        });
+        if (!users || users.length === 0) {
+            list.innerHTML = '<div style="padding: 20px; text-align: center;">لا يوجد أعضاء</div>';
+            return;
+        }
+
+        list.innerHTML = users.map(user => createUserRow(user)).join('');
+
     } catch (err) {
-        console.error('Error loading members:', err);
+        console.error('Load users error:', err);
+        list.innerHTML = '<div style="padding: 20px; text-align: center; color: red;">خطأ في التحميل</div>';
     }
 }
 
-async function handleAddMember(e) {
-    e.preventDefault();
-    const name = document.getElementById('newMemberName').value;
-    const email = document.getElementById('newMemberEmail').value.trim().toLowerCase();
-    const group = document.getElementById('newMemberGroup').value;
+function createUserRow(user) {
+    const initials = user.full_name.charAt(0);
+    const groupInfo = GROUPS[user.group_level];
 
-    if(!name || !email) return;
+    return `
+        <div class="user-row">
+            <div class="user-avatar">${initials}</div>
+            <div class="user-info">
+                <div class="user-name">
+                    ${escapeHtml(user.full_name)}
+                    ${user.role === 'admin' ? '<span class="role-badge">مشرف</span>' : ''}
+                </div>
+                <div class="user-email">${user.email}</div>
+            </div>
+            <span class="group-badge ${user.group_level}">${groupInfo.name}</span>
+            <div class="user-actions">
+                <button class="btn-icon" onclick="editUser('${user.id}')" title="تعديل">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-icon" onclick="deleteUser('${user.id}')" title="حذف">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+}
 
-    if(confirm(`هل أنت متأكد من إضافة ${name}؟`)) {
-        try {
-            const { error } = await sb
-                .from('allowed_users')
-                .insert([{ email: email, full_name: name, group_level: group }]);
+async function submitUser() {
+    const email = document.getElementById('newUserEmail').value.trim();
+    const name = document.getElementById('newUserName').value.trim();
+    const group = document.getElementById('newUserGroup').value;
+    const role = document.getElementById('newUserRole').value;
 
-            if (error) throw error;
+    if (!email || !name) {
+        showSnackbar('يرجى ملء جميع الحقول');
+        return;
+    }
 
-            alert('تمت إضافة العضو بنجاح!');
-            document.getElementById('addMemberForm').reset();
-            loadMembersList(); // تحديث القائمة
-        } catch (err) {
-            alert('حدث خطأ! ربما هذا الإيميل مسجل مسبقاً.');
-            console.error(err);
+    try {
+        const { error } = await supabase.from('allowed_users').insert({
+            email: email,
+            full_name: name,
+            group_level: group,
+            role: role
+        });
+
+        if (error) throw error;
+
+        closeModal('userModal');
+        document.getElementById('userForm').reset();
+        showSnackbar('تم إضافة العضو بنجاح');
+        loadUsersManagement();
+
+    } catch (err) {
+        console.error('Submit user error:', err);
+        if (err.code === '23505') {
+            showSnackbar('البريد الإلكتروني موجود مسبقاً');
+        } else {
+            showSnackbar('حدث خطأ، حاول مرة أخرى');
         }
     }
 }
 
-async function deleteMember(email) {
-    if(confirm(`هل أنت متأكد من حذف العضو ${email} ومنعه من الدخول؟`)) {
-        try {
-            const { error } = await sb
-                .from('allowed_users')
-                .delete()
-                .eq('email', email);
+async function editUser(id) {
+    try {
+        const { data: user, error } = await supabase
+            .from('allowed_users')
+            .select('*')
+            .eq('id', id)
+            .single();
 
-            if (error) throw error;
-            loadMembersList(); // تحديث القائمة
-        } catch (err) {
-            alert('حدث خطأ أثناء الحذف');
-            console.error(err);
-        }
+        if (error) throw error;
+
+        document.getElementById('editUserId').value = user.id;
+        document.getElementById('editUserEmail').value = user.email;
+        document.getElementById('editUserName').value = user.full_name;
+        document.getElementById('editUserGroup').value = user.group_level;
+        document.getElementById('editUserRole').value = user.role;
+
+        openModal('editUserModal');
+
+    } catch (err) {
+        console.error('Edit user error:', err);
+        showSnackbar('حدث خطأ');
     }
+}
+
+async function updateUser() {
+    const id = document.getElementById('editUserId').value;
+    const name = document.getElementById('editUserName').value.trim();
+    const group = document.getElementById('editUserGroup').value;
+    const role = document.getElementById('editUserRole').value;
+
+    if (!name) {
+        showSnackbar('يرجى إدخال الاسم');
+        return;
+    }
+
+    try {
+        const { error } = await supabase
+            .from('allowed_users')
+            .update({
+                full_name: name,
+                group_level: group,
+                role: role,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id);
+
+        if (error) throw error;
+
+        closeModal('editUserModal');
+        showSnackbar('تم التحديث بنجاح');
+        loadUsersManagement();
+
+    } catch (err) {
+        console.error('Update user error:', err);
+        showSnackbar('حدث خطأ');
+    }
+}
+
+async function deleteUser(id) {
+    if (!confirm('هل تريد حذف هذا العضو؟')) return;
+
+    try {
+        const { error } = await supabase.from('allowed_users').delete().eq('id', id);
+        if (error) throw error;
+
+        showSnackbar('تم الحذف');
+        loadUsersManagement();
+
+    } catch (err) {
+        console.error('Delete user error:', err);
+        showSnackbar('حدث خطأ');
+    }
+}
+
+// ========== MODALS ==========
+function openModal(modalId) {
+    document.getElementById(modalId).classList.add('active');
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+}
+
+function openQuickAction() {
+    // Show post modal by default
+    openModal('postModal');
+}
+
+// ========== UTILITIES ==========
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now - date;
+    
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    
+    if (minutes < 1) return 'الآن';
+    if (minutes < 60) return `منذ ${minutes} دقيقة`;
+    if (hours < 24) return `منذ ${hours} ساعة`;
+    if (days < 7) return `منذ ${days} يوم`;
+    
+    return date.toLocaleDateString('ar');
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // ========== EXPOSE FUNCTIONS GLOBALLY ==========
-window.navigateTo = navigateTo;
-window.openAwrad = openAwrad;
+window.handleLogout = handleLogout;
+window.resetAuth = resetAuth;
+window.openModal = openModal;
 window.closeModal = closeModal;
-window.deleteSession = deleteSession;
+window.openQuickAction = openQuickAction;
+window.submitPost = submitPost;
 window.deletePost = deletePost;
-window.closeSessionModal = closeSessionModal;
-window.resetAuthForm = resetAuthForm;
-// Expose admin functions
-window.deleteMember = deleteMember;
+window.submitEvent = submitEvent;
+window.deleteEvent = deleteEvent;
+window.loadUsersManagement = loadUsersManagement;
+window.submitUser = submitUser;
+window.editUser = editUser;
+window.updateUser = updateUser;
+window.deleteUser = deleteUser;
