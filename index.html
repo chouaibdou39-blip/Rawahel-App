@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="منصة رواحل - منصة إدارة مجتمعية للتعلم والتواصل">
+    <title>منصة رواحل | Rawahel Platform</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-content">
+            <div class="loading-logo">
+                <i class="fas fa-hands-holding-heart"></i>
+            </div>
+            <div class="loading-spinner"></div>
+            <p>جارٍ التحميل...</p>
+        </div>
+    </div>
+
+    <div class="auth-overlay hidden" id="authOverlay">
+        <div class="auth-modal">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <i class="fas fa-hands-holding-heart"></i>
+                    <h1>منصة رواحل</h1>
+                </div>
+                <p>تسجيل الدخول عبر البريد الإلكتروني</p>
+            </div>
+
+            <form class="auth-form" id="authForm">
+                <div class="form-group">
+                    <label for="userEmail">البريد الإلكتروني</label>
+                    <input type="email" id="userEmail" name="userEmail" placeholder="example@email.com" required>
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block" id="loginBtn">
+                    <i class="fas fa-paper-plane"></i>
+                    إرسال رابط الدخول
+                </button>
+            </form>
+
+            <div class="auth-success hidden" id="authSuccess">
+                <div class="success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3>تم إرسال رابط الدخول!</h3>
+                <p>تفقد بريدك الإلكتروني واضغط على الرابط للدخول</p>
+                <button class="btn btn-outline-primary" onclick="resetAuthForm()">
+                    <i class="fas fa-redo"></i>
+                    إعادة المحاولة
+                </button>
+            </div>
+
+            <div class="auth-denied hidden" id="authDenied">
+                <div class="denied-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h3>الوصول مقيد</h3>
+                <p>هذه المنصة مخصصة لأعضاء رواحل فقط</p>
+                <p class="denied-contact">للانضمام، تواصل معنا:</p>
+                <a href="mailto:chouaibdou39@gmail.com" class="contact-link">
+                    <i class="fas fa-envelope"></i>
+                    chouaibdou39@gmail.com
+                </a>
+                <button class="btn btn-outline-primary" onclick="resetAuthForm()">
+                    <i class="fas fa-redo"></i>
+                    المحاولة ببريد آخر
+                </button>
+            </div>
+
+            <div class="auth-groups-info">
+                <h4>مجموعاتنا التعليمية</h4>
+                <div class="group-badges">
+                    <span class="group-badge bunyan"><i class="fas fa-seedling"></i> بنيان</span>
+                    <span class="group-badge rawasi"><i class="fas fa-mountain"></i> رواسي</span>
+                    <span class="group-badge rasukh"><i class="fas fa-graduation-cap"></i> رسوخ</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container" id="appContainer">
+        <header class="header" id="header">
+            <div class="container">
+                <nav class="navbar">
+                    <a href="#" class="logo">
+                        <i class="fas fa-hands-holding-heart"></i>
+                        <span>رواحل</span>
+                    </a>
+
+                    <ul class="nav-links" id="navLinks">
+                        <li><a href="#dashboard" class="active" data-section="dashboard"><i class="fas fa-home"></i>
+                                الرئيسية</a></li>
+                        <li><a href="#calendar" data-section="calendar"><i class="fas fa-calendar-alt"></i> الرزنامة</a>
+                        </li>
+                        <li><a href="#forum" data-section="forum"><i class="fas fa-comments"></i> المنتدى</a></li>
+                        <li><a href="#awrad" data-section="awrad"><i class="fas fa-book-quran"></i> الأوراد</a></li>
+                        <li><a href="#about" data-section="about"><i class="fas fa-info-circle"></i> من نحن</a></li>
+                        <li><a href="#admin" data-section="admin" id="adminLink" class="hidden" style="color: #ff4757;"><i class="fas fa-user-shield"></i> لوحة المدير</a></li>
+                    </ul>
+
+                    <div class="nav-user" id="navUser">
+                        <span class="user-group-badge" id="userGroupBadge"></span>
+                        <div class="user-avatar" id="userAvatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <button class="logout-btn" id="logoutBtn" title="تسجيل الخروج">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+
+                    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </nav>
+            </div>
+        </header>
+
+        <section class="section dashboard-section active" id="dashboard">
+            <div class="container">
+                <div class="welcome-card">
+                    <div class="welcome-content">
+                        <h1>مرحباً بك، <span id="welcomeName">الزائر</span>!</h1>
+                        <p>أنت في مجموعة <span id="welcomeGroup" class="highlight">---</span></p>
+                        <p class="user-email" id="userEmailDisplay"></p>
+                    </div>
+                    <div class="welcome-icon">
+                        <i class="fas fa-mosque"></i>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon calendar-icon">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-number" id="totalSessions">0</span>
+                            <span class="stat-label">الحصص المجدولة</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon forum-icon">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-number" id="totalPosts">0</span>
+                            <span class="stat-label">منشورات المنتدى</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon awrad-icon">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-number">3</span>
+                            <span class="stat-label">أوراد يومية</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quick-actions">
+                    <h3>الوصول السريع</h3>
+                    <div class="actions-grid">
+                        <button class="action-card" onclick="navigateTo('calendar')">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>إضافة حصة</span>
+                        </button>
+                        <button class="action-card" onclick="navigateTo('forum')">
+                            <i class="fas fa-pen"></i>
+                            <span>كتابة منشور</span>
+                        </button>
+                        <button class="action-card" onclick="navigateTo('awrad')">
+                            <i class="fas fa-book-quran"></i>
+                            <span>الأذكار اليومية</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section calendar-section" id="calendar">
+            <div class="container">
+                <div class="section-header-inline">
+                    <h2><i class="fas fa-calendar-alt"></i> الرزنامة الأسبوعية</h2>
+                    <button class="btn btn-primary" id="addSessionBtn">
+                        <i class="fas fa-plus"></i>
+                        إضافة حصة
+                    </button>
+                </div>
+
+                <div class="calendar-wrapper">
+                    <div class="calendar-header">
+                        <div class="day-header">السبت</div>
+                        <div class="day-header">الأحد</div>
+                        <div class="day-header">الإثنين</div>
+                        <div class="day-header">الثلاثاء</div>
+                        <div class="day-header">الأربعاء</div>
+                        <div class="day-header">الخميس</div>
+                        <div class="day-header">الجمعة</div>
+                    </div>
+                    <div class="calendar-body" id="calendarBody">
+                        <div class="day-column" data-day="saturday"></div>
+                        <div class="day-column" data-day="sunday"></div>
+                        <div class="day-column" data-day="monday"></div>
+                        <div class="day-column" data-day="tuesday"></div>
+                        <div class="day-column" data-day="wednesday"></div>
+                        <div class="day-column" data-day="thursday"></div>
+                        <div class="day-column" data-day="friday"></div>
+                    </div>
+                </div>
+
+                <div class="calendar-legend">
+                    <span class="legend-item bunyan"><i class="fas fa-circle"></i> بنيان</span>
+                    <span class="legend-item rawasi"><i class="fas fa-circle"></i> رواسي</span>
+                    <span class="legend-item rasukh"><i class="fas fa-circle"></i> رسوخ</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="section forum-section" id="forum">
+            <div class="container">
+                <div class="section-header-inline">
+                    <h2><i class="fas fa-comments"></i> منتدى المجموعة</h2>
+                    <span class="forum-group-filter" id="forumGroupLabel">جميع المجموعات</span>
+                </div>
+
+                <div class="forum-post-form">
+                    <div class="post-form-header">
+                        <div class="post-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <span id="postFormName">اسم المستخدم</span>
+                    </div>
+                    <textarea id="postContent" placeholder="شارك أفكارك مع مجموعتك..." rows="3"></textarea>
+                    <button class="btn btn-primary" id="submitPostBtn">
+                        <i class="fas fa-paper-plane"></i>
+                        نشر
+                    </button>
+                </div>
+
+                <div class="forum-posts" id="forumPosts">
+                    <div class="loading-posts">
+                        <div class="loading-spinner small"></div>
+                        <p>جارٍ تحميل المنشورات...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section awrad-section" id="awrad">
+            <div class="container">
+                <div class="section-header">
+                    <span class="section-tag">الأوراد اليومية</span>
+                    <h2 class="section-title">الانضباط الروحي</h2>
+                    <p class="section-description">
+                        حافظ على ورديك اليومي وتقرب إلى الله بالذكر والدعاء
+                    </p>
+                </div>
+
+                <div class="awrad-grid">
+                    <div class="awrad-card" onclick="openAwrad('morning')">
+                        <div class="awrad-icon morning">
+                            <i class="fas fa-sun"></i>
+                        </div>
+                        <h3>أذكار الصباح</h3>
+                        <p>ابدأ يومك بذكر الله والتحصينات الصباحية المباركة</p>
+                        <span class="awrad-link">
+                            اقرأ الآن
+                            <i class="fas fa-arrow-left"></i>
+                        </span>
+                    </div>
+
+                    <div class="awrad-card" onclick="openAwrad('evening')">
+                        <div class="awrad-icon evening">
+                            <i class="fas fa-moon"></i>
+                        </div>
+                        <h3>أذكار المساء</h3>
+                        <p>اختم يومك بالأذكار المسائية وتحصينات الليل</p>
+                        <span class="awrad-link">
+                            اقرأ الآن
+                            <i class="fas fa-arrow-left"></i>
+                        </span>
+                    </div>
+
+                    <div class="awrad-card" onclick="openAwrad('wird')">
+                        <div class="awrad-icon wird">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <h3>الورد اليومي</h3>
+                        <p>حافظ على قراءة وردك اليومي من القرآن الكريم</p>
+                        <span class="awrad-link">
+                            اقرأ الآن
+                            <i class="fas fa-arrow-left"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section about-section" id="about">
+            <div class="container">
+                <div class="section-header">
+                    <span class="section-tag">من نحن</span>
+                    <h2 class="section-title">رسالتنا ورؤيتنا</h2>
+                    <p class="section-description">
+                        نحن جمعية رواحل الخيرية، نعمل بإخلاص لخدمة المجتمع وتقديم يد العون لكل محتاج
+                    </p>
+                </div>
+
+                <div class="about-grid">
+                    <div class="about-card">
+                        <div class="card-icon">
+                            <i class="fas fa-bullseye"></i>
+                        </div>
+                        <h3>رسالتنا</h3>
+                        <p>تقديم المساعدات الإنسانية والاجتماعية للفئات المحتاجة، وتعزيز روح التكافل والتراحم في
+                            المجتمع.</p>
+                    </div>
+
+                    <div class="about-card">
+                        <div class="card-icon">
+                            <i class="fas fa-eye"></i>
+                        </div>
+                        <h3>رؤيتنا</h3>
+                        <p>أن نكون منارة للعمل الخيري المتميز، نساهم في بناء مجتمع متماسك يسوده العدل والتكافل.</p>
+                    </div>
+
+                    <div class="about-card">
+                        <div class="card-icon">
+                            <i class="fas fa-gem"></i>
+                        </div>
+                        <h3>قيمنا</h3>
+                        <p>الإخلاص والشفافية والأمانة في العمل، احترام كرامة الإنسان، التميز في الخدمة.</p>
+                    </div>
+                </div>
+
+                <div class="contact-info-card">
+                    <h3><i class="fas fa-phone-alt"></i> تواصل معنا</h3>
+                    <div class="contact-details">
+                        <p><i class="fas fa-map-marker-alt"></i> سيدي عون، الوادي، الجزائر</p>
+                        <p><i class="fas fa-phone"></i> <a href="tel:+213793419764">+213 79 341 9764</a></p>
+                        <p><i class="fas fa-envelope"></i> <a
+                                href="mailto:chouaibdou39@gmail.com">chouaibdou39@gmail.com</a></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="admin" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h2 class="section-title">لوحة التحكم</h2>
+                    <p class="section-description">إدارة أعضاء الجمعية وصلاحيات الدخول</p>
+                </div>
+
+                <div class="admin-wrapper" style="display: grid; gap: 30px; grid-template-columns: 1fr 2fr;">
+                    <div class="contact-form" style="height: fit-content;">
+                        <h3 style="margin-bottom: 20px;">إضافة عضو جديد</h3>
+                        <form id="addMemberForm">
+                            <div class="form-group">
+                                <input type="text" id="newMemberName" placeholder="الاسم الكامل" required>
+                            </div>
+                            <div class="form-group">
+                                <input type="email" id="newMemberEmail" placeholder="البريد الإلكتروني" required>
+                            </div>
+                            <div class="form-group">
+                                <select id="newMemberGroup" style="width: 100%; padding: 15px; border: 2px solid #E9ECEF; border-radius: 8px;">
+                                    <option value="bunyan">بنيان (ابتدائي)</option>
+                                    <option value="rawasi">رواسي (متوسط/ثانوي)</option>
+                                    <option value="rasukh">رسوخ (جامعي)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i class="fas fa-plus-circle"></i> إضافة العضو
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="contact-form">
+                        <h3 style="margin-bottom: 20px;">قائمة الأعضاء المسجلين</h3>
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8f9fa; text-align: right;">
+                                        <th style="padding: 10px;">الاسم</th>
+                                        <th style="padding: 10px;">الإيميل</th>
+                                        <th style="padding: 10px;">الفوج</th>
+                                        <th style="padding: 10px;">حذف</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="membersTableBody">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <div class="container">
+                <div class="footer-content">
+                    <div class="footer-brand">
+                        <a href="#" class="logo">
+                            <i class="fas fa-hands-holding-heart"></i>
+                            <span>رواحل</span>
+                        </a>
+                        <p>منصة إدارة مجتمعية للتعلم والتواصل</p>
+                    </div>
+                    <div class="footer-links">
+                        <a href="#dashboard">الرئيسية</a>
+                        <a href="#calendar">الرزنامة</a>
+                        <a href="#forum">المنتدى</a>
+                        <a href="#awrad">الأوراد</a>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    <p>© 2026 جميع الحقوق محفوظة لمنصة رواحل</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <div class="modal-overlay" id="sessionModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-icon calendar-modal-icon">
+                    <i class="fas fa-calendar-plus"></i>
+                </div>
+                <h2>إضافة حصة جديدة</h2>
+                <button class="modal-close" onclick="closeSessionModal()" aria-label="إغلاق">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-content">
+                <form id="sessionForm">
+                    <div class="form-group">
+                        <label for="sessionDay">اليوم</label>
+                        <select id="sessionDay" required>
+                            <option value="saturday">السبت</option>
+                            <option value="sunday">الأحد</option>
+                            <option value="monday">الإثنين</option>
+                            <option value="tuesday">الثلاثاء</option>
+                            <option value="wednesday">الأربعاء</option>
+                            <option value="thursday">الخميس</option>
+                            <option value="friday">الجمعة</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="sessionTime">الوقت</label>
+                            <input type="time" id="sessionTime" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="sessionDuration">المدة (دقيقة)</label>
+                            <input type="number" id="sessionDuration" value="60" min="15" max="180">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="sessionSubject">المادة / الموضوع</label>
+                        <input type="text" id="sessionSubject" placeholder="مثال: تفسير القرآن" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="sessionTeacher">المعلم / المحاضر</label>
+                        <input type="text" id="sessionTeacher" placeholder="اسم المعلم">
+                    </div>
+                    <div class="form-group">
+                        <label for="sessionGroup">المجموعة</label>
+                        <select id="sessionGroup" required>
+                            <option value="bunyan">بنيان - الابتدائية</option>
+                            <option value="rawasi">رواسي - المتوسطة والثانوية</option>
+                            <option value="rasukh">رسوخ - الجامعية</option>
+                            <option value="all">جميع المجموعات</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-check"></i>
+                        حفظ الحصة
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalMorning">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-icon morning">
+                    <i class="fas fa-sun"></i>
+                </div>
+                <h2>أذكار الصباح</h2>
+                <button class="modal-close" onclick="closeModal('modalMorning')" aria-label="إغلاق">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-content">
+                <div class="dhikr-item">
+                    <h3>آية الكرسي</h3>
+                    <p class="arabic-text">
+                        اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ
+                        لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَن ذَا الَّذِي يَشْفَعُ عِندَهُ إِلَّا
+                        بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِّنْ
+                        عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ
+                        حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ
+                    </p>
+                    <span class="dhikr-count">مرة واحدة</span>
+                </div>
+
+                <div class="dhikr-item">
+                    <h3>سورة الإخلاص</h3>
+                    <p class="arabic-text">
+                        قُلْ هُوَ اللَّهُ أَحَدٌ ۝ اللَّهُ الصَّمَدُ ۝ لَمْ يَلِدْ وَلَمْ يُولَدْ ۝ وَلَمْ يَكُن لَّهُ
+                        كُفُوًا أَحَدٌ
+                    </p>
+                    <span class="dhikr-count">ثلاث مرات</span>
+                </div>
+
+                <div class="dhikr-item">
+                    <h3>دعاء الصباح</h3>
+                    <p class="arabic-text">
+                        أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَٰهَ إِلَّا اللَّهُ
+                        وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ
+                    </p>
+                    <span class="dhikr-count">مرة واحدة</span>
+                </div>
+
+                <div class="dhikr-item">
+                    <h3>سيد الاستغفار</h3>
+                    <p class="arabic-text">
+                        اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَٰهَ إِلَّا أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَىٰ
+                        عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ، أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ، أَبُوءُ لَكَ
+                        بِنِعْمَتِكَ عَلَيَّ، وَأَبُوءُ بِذَنْبِي فَاغْفِرْ لِي فَإِنَّهُ لَا يَغْفِرُ الذُّنُوبَ إِلَّا
+                        أَنْتَ
+                    </p>
+                    <span class="dhikr-count">مرة واحدة</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalEvening">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-icon evening">
+                    <i class="fas fa-moon"></i>
+                </div>
+                <h2>أذكار المساء</h2>
+                <button class="modal-close" onclick="closeModal('modalEvening')" aria-label="إغلاق">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-content">
+                <div class="dhikr-item">
+                    <h3>آية الكرسي</h3>
+                    <p class="arabic-text">
+                        اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ
+                        لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ
+                    </p>
+                    <span class="dhikr-count">مرة واحدة</span>
+                </div>
+
+                <div class="dhikr-item">
+                    <h3>دعاء المساء</h3>
+                    <p class="arabic-text">
+                        أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَٰهَ إِلَّا اللَّهُ
+                        وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ
+                    </p>
+                    <span class="dhikr-count">مرة واحدة</span>
+                </div>
+
+                <div class="dhikr-item">
+                    <h3>دعاء التحصين</h3>
+                    <p class="arabic-text">
+                        أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ
+                    </p>
+                    <span class="dhikr-count">ثلاث مرات</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalWird">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-icon wird">
+                    <i class="fas fa-book-open"></i>
+                </div>
+                <h2>الورد اليومي</h2>
+                <button class="modal-close" onclick="closeModal('modalWird')" aria-label="إغلاق">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-content">
+                <div class="wird-intro">
+                    <div class="wird-icon-large">
+                        <i class="fas fa-quran"></i>
+                    </div>
+                    <h3>حافظ على وردك من القرآن الكريم</h3>
+                    <p>
+                        اجعل لنفسك ورداً يومياً من كتاب الله، فالقرآن نور وهداية وشفاء لما في الصدور.
+                    </p>
+                </div>
+
+                <div class="dhikr-item wird-suggestion">
+                    <h3>💡 اقتراح الورد اليومي</h3>
+                    <ul class="wird-list">
+                        <li><i class="fas fa-check-circle"></i> صفحتان بعد كل صلاة = ختمة كل شهر</li>
+                        <li><i class="fas fa-check-circle"></i> جزء واحد يومياً = ختمة كل شهر</li>
+                        <li><i class="fas fa-check-circle"></i> ثلاثة أجزاء يومياً = ختمة كل 10 أيام</li>
+                    </ul>
+                </div>
+
+                <div class="wird-footer">
+                    <p>﴿ إِنَّ هَٰذَا الْقُرْآنَ يَهْدِي لِلَّتِي هِيَ أَقْوَمُ ﴾</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
