@@ -2,9 +2,9 @@
    RAWAHEL PLATFORM - FIXED NAVIGATION JS
    ============================================ */
 
-// 1. إعدادات الاتصال (تأكد من وضع مفاتيحك الحقيقية هنا)
+// ⚠️ هام جداً: ضع روابطك الحقيقية هنا لكي يعمل الموقع
 const SUPABASE_URL = 'https://utlbdcebtcjnjzljcaqg.supabase.co'; 
-const SUPABASE_ANON_KEY = 'YOUR_REAL_ANON_KEY_HERE'; // <--- ضع مفتاحك الحقيقي هنا
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0bGJkY2VidGNqbmp6bGpjYXFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0MjE1NTcsImV4cCI6MjA4NDk5NzU1N30.uw5pMDEQz1jUNNwktcKnb2Kflrl9JycnvCCozcDYDY0'; // <--- انسخ المفتاح من Supabase وألصقه هنا
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -16,66 +16,74 @@ let isAdmin = false;
 
 // ========== التشغيل التلقائي ==========
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. تشغيل نظام التنقل فوراً (حتى لو فشل الاتصال)
+    setupNavigation();
+    
+    // 2. محاولة الاتصال بقاعدة البيانات
     initApp();
-    setupNavigation(); // تشغيل نظام التنقل فوراً
 });
 
-// ========== نظام التنقل (هذا هو الحل لمشكلتك) ==========
+// ========== 📱 نظام التنقل (الحل لمشكلة التكدس) ==========
 function setupNavigation() {
     const navItems = document.querySelectorAll('.nav-item');
     const sections = document.querySelectorAll('.section');
 
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
-            // منع السلوك الافتراضي
             e.preventDefault();
 
-            // 1. معرفة القسم المطلوب
-            const targetId = item.dataset.section;
-
-            // 2. إخفاء جميع الأقسام (Hide All)
+            // 1. إخفاء جميع الأقسام
             sections.forEach(section => {
                 section.classList.remove('active');
                 section.style.display = 'none'; // ضمان الإخفاء
             });
 
-            // 3. إظهار القسم المطلوب فقط (Show Target)
+            // 2. إظهار القسم المطلوب
+            const targetId = item.dataset.section;
             const targetSection = document.getElementById(targetId);
             if (targetSection) {
                 targetSection.classList.add('active');
                 targetSection.style.display = 'block'; // ضمان الظهور
+                // إعادة تشغيل الحركة
+                targetSection.classList.remove('fade-in');
+                void targetSection.offsetWidth; // trigger reflow
+                targetSection.classList.add('fade-in');
             }
 
-            // 4. تحديث شكل الأزرار (تلوين الزر النشط)
+            // 3. تلوين الزر النشط
             navItems.forEach(nav => nav.classList.remove('active'));
             item.classList.add('active');
         });
     });
 
-    // تشغيل القسم الافتراضي (الأخبار) عند البداية
+    // تفعيل القسم الرئيسي افتراضياً
     document.getElementById('newsSection').style.display = 'block';
     document.getElementById('newsSection').classList.add('active');
 }
 
-// ========== باقي كود التطبيق (بدون تغيير) ==========
+// ========== باقي كود التطبيق ==========
 
 async function initApp() {
-    const { data: { session } } = await sb.auth.getSession();
-    if (session) {
-        await handleAuthentication(session.user);
-    } else {
-        showAuthScreen();
-    }
-
-    sb.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' && session) {
+    try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) {
             await handleAuthentication(session.user);
-        } else if (event === 'SIGNED_OUT') {
+        } else {
             showAuthScreen();
         }
-    });
 
-    setupOtherListeners(); // مستمعي الأحداث الأخرى
+        sb.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_IN' && session) {
+                await handleAuthentication(session.user);
+            } else if (event === 'SIGNED_OUT') {
+                showAuthScreen();
+            }
+        });
+
+        setupOtherListeners(); // تشغيل باقي الأزرار
+    } catch (err) {
+        console.error("Critical Init Error:", err);
+    }
 }
 
 async function handleAuthentication(user) {
@@ -109,26 +117,28 @@ async function handleAuthentication(user) {
 }
 
 // دوال العرض
-function showLoading() { document.getElementById('loadingScreen').classList.remove('hidden'); }
-function hideLoading() { document.getElementById('loadingScreen').classList.add('hidden'); }
+function showLoading() { if(document.getElementById('loadingScreen')) document.getElementById('loadingScreen').classList.remove('hidden'); }
+function hideLoading() { if(document.getElementById('loadingScreen')) document.getElementById('loadingScreen').classList.add('hidden'); }
+
 function showAuthScreen() {
     document.getElementById('authScreen').classList.remove('hidden');
-    document.getElementById('appShell').classList.add('hidden'); // إخفاء التطبيق
+    document.getElementById('appShell').style.display = 'none'; // إخفاء التطبيق بالكامل
 }
+
 function showAuthError() {
     document.getElementById('authScreen').classList.remove('hidden');
-    document.getElementById('authSuccess').classList.add('hidden');
-    document.getElementById('authError').classList.remove('hidden');
+    if(document.getElementById('authSuccess')) document.getElementById('authSuccess').classList.add('hidden');
+    if(document.getElementById('authError')) document.getElementById('authError').classList.remove('hidden');
 }
 
 async function showApp() {
     document.getElementById('authScreen').classList.add('hidden');
-    document.getElementById('appShell').classList.remove('hidden'); // إظهار التطبيق
+    document.getElementById('appShell').style.display = 'block'; // إظهار التطبيق
 
     // إعدادات المدير
     if (isAdmin) {
-        document.getElementById('adminBadge').classList.remove('hidden');
-        document.getElementById('adminNavItem').classList.remove('hidden'); // إظهار زر الإدارة
+        if(document.getElementById('adminBadge')) document.getElementById('adminBadge').classList.remove('hidden');
+        if(document.getElementById('adminNavItem')) document.getElementById('adminNavItem').classList.remove('hidden');
     }
 
     // تحميل البيانات
@@ -138,9 +148,8 @@ async function showApp() {
     await loadEvents();
 }
 
-// مستمعي الأحداث الجانبية (التبويبات العلوية والمودال)
 function setupOtherListeners() {
-    // التبويبات العلوية (بنيان، رواسي، رسوخ)
+    // التبويبات العلوية
     document.querySelectorAll('.tab-btn').forEach(tab => {
         tab.addEventListener('click', () => {
             selectedGroup = tab.dataset.group;
@@ -150,7 +159,7 @@ function setupOtherListeners() {
         });
     });
 
-    // إغلاق المودال عند الضغط في الخارج
+    // إغلاق المودال
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) overlay.classList.remove('active');
@@ -158,7 +167,8 @@ function setupOtherListeners() {
     });
     
     // نموذج الدخول
-    document.getElementById('authForm').addEventListener('submit', handleLogin);
+    const authForm = document.getElementById('authForm');
+    if(authForm) authForm.addEventListener('submit', handleLogin);
 }
 
 function updateGroupTabs() {
@@ -170,11 +180,14 @@ function updateGroupTabs() {
 // ========== تسجيل الدخول ==========
 async function handleLogin(e) {
     e.preventDefault();
-    const email = document.getElementById('emailInput').value.trim().toLowerCase();
+    const emailInput = document.getElementById('emailInput');
+    if(!emailInput) return;
+    
+    const email = emailInput.value.trim().toLowerCase();
     const loginBtn = document.getElementById('loginBtn');
     
     if (!email) return;
-    loginBtn.disabled = true; loginBtn.innerHTML = 'جارٍ الإرسال...';
+    if(loginBtn) { loginBtn.disabled = true; loginBtn.innerHTML = 'جارٍ الإرسال...'; }
 
     try {
         const { data: allowed } = await sb.from('allowed_users').select('email').eq('email', email).single();
@@ -186,29 +199,29 @@ async function handleLogin(e) {
         });
         if (error) throw error;
         
-        document.getElementById('authSuccess').classList.remove('hidden');
-        document.getElementById('authForm').classList.add('hidden');
+        if(document.getElementById('authSuccess')) document.getElementById('authSuccess').classList.remove('hidden');
+        if(document.getElementById('authForm')) document.getElementById('authForm').classList.add('hidden');
     } catch (err) {
         alert('حدث خطأ حاول مرة أخرى');
+        console.error(err);
     } finally {
-        loginBtn.disabled = false; loginBtn.innerHTML = 'إرسال رابط الدخول';
+        if(loginBtn) { loginBtn.disabled = false; loginBtn.innerHTML = 'إرسال رابط الدخول'; }
     }
 }
 
-// ========== الدوال المساعدة (نفس القديمة) ==========
-async function loadNews() {
-    // (نفس كود الأخبار السابق - اختصرته هنا للتركيز على الحل)
-    // تأكد من نسخ دالة loadNews الكاملة من كودك القديم إذا كنت عدلت عليها
-    // أو استخدم الكود السابق الذي أرسلته لك
-    console.log("Loading news for: " + selectedGroup);
-}
-async function loadEvents() {
-    console.log("Loading events for: " + selectedGroup);
-}
+// ========== الدوال المساعدة (فارغة لملئها لاحقاً حسب الحاجة) ==========
+async function loadNews() { console.log("News loaded for " + selectedGroup); }
+async function loadEvents() { console.log("Events loaded for " + selectedGroup); }
 
 // ========== المودال ==========
-function openModal(id) { document.getElementById(id).classList.add('active'); }
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function openModal(id) { 
+    const el = document.getElementById(id);
+    if(el) el.classList.add('active'); 
+}
+function closeModal(id) { 
+    const el = document.getElementById(id);
+    if(el) el.classList.remove('active'); 
+}
 function resetAuth() { location.reload(); }
 async function handleLogout() { await sb.auth.signOut(); location.reload(); }
 
@@ -217,4 +230,4 @@ window.openModal = openModal;
 window.closeModal = closeModal;
 window.resetAuth = resetAuth;
 window.handleLogout = handleLogout;
-window.loadUsersManagement = function() { alert('صفحة الإدارة'); }; // مثال
+window.loadUsersManagement = function() { alert('قريباً: إدارة الأعضاء'); };
