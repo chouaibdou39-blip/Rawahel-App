@@ -1,23 +1,21 @@
 /* ============================================
-   RAWAHEL PLATFORM - Complete JavaScript
-   Supabase Integration with Admin Features
+   RAWAHEL PLATFORM - FINAL FIXED JS
    ============================================ */
 
-// ========== SUPABASE CONFIG ==========
-// IMPORTANT: Replace with your actual credentials
+// 1. إعدادات الاتصال (تم تغيير الاسم إلى sb لتجنب المشاكل)
 const SUPABASE_URL = 'https://utlbdcebtcjnjzljcaqg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0bGJkY2VidGNqbmp6bGpjYXFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.placeholder';
 
-// Initialize Supabase
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// استخدام sb بدلاً من supabase لمنع تضارب الأسماء
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ========== APP STATE ==========
+// ========== متغيرات النظام ==========
 let currentUser = null;
 let userProfile = null;
 let selectedGroup = 'bunyan';
 let isAdmin = false;
 
-// Group info
+// معلومات المجموعات
 const GROUPS = {
     bunyan: { name: 'بنيان', icon: 'fa-seedling', color: '#34A853' },
     rawasi: { name: 'رواسي', icon: 'fa-mountain', color: '#FBBC04' },
@@ -25,22 +23,21 @@ const GROUPS = {
     all: { name: 'الكل', icon: 'fa-users', color: '#1A73E8' }
 };
 
-// ========== INITIALIZATION ==========
+// ========== التشغيل التلقائي ==========
 document.addEventListener('DOMContentLoaded', initApp);
 
 async function initApp() {
-    // Check for existing session
-    const { data: { session } } = await supabase.auth.getSession();
+    // التحقق من الجلسة الحالية
+    const { data: { session } } = await sb.auth.getSession();
     
     if (session) {
         await handleAuthentication(session.user);
     } else {
-        // Check for magic link callback
         await handleAuthCallback();
     }
 
-    // Listen for auth changes
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    // مراقبة حالة الدخول/الخروج
+    sb.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
             await handleAuthentication(session.user);
         } else if (event === 'SIGNED_OUT') {
@@ -48,15 +45,13 @@ async function initApp() {
         }
     });
 
-    // Setup event listeners
     setupEventListeners();
 }
 
 async function handleAuthCallback() {
     const hash = window.location.hash;
     if (hash && hash.includes('access_token')) {
-        // Magic link callback - wait for onAuthStateChange
-        return;
+        return; // Supabase سيتعامل مع هذا تلقائياً
     }
     hideLoading();
     showAuthScreen();
@@ -66,27 +61,27 @@ async function handleAuthentication(user) {
     showLoading();
     
     try {
-        // Check whitelist
-        const { data: profile, error } = await supabase
+        // التحقق من القائمة البيضاء (Whitelist)
+        const { data: profile, error } = await sb
             .from('allowed_users')
             .select('*')
             .eq('email', user.email)
             .single();
 
         if (error || !profile) {
-            // User not in whitelist
-            await supabase.auth.signOut();
+            // المستخدم غير موجود في القائمة
+            await sb.auth.signOut();
             hideLoading();
             showAuthError();
             return;
         }
 
-        // User is allowed
+        // تم الدخول بنجاح
         currentUser = user;
         userProfile = profile;
         isAdmin = profile.role === 'admin';
 
-        // Clear URL hash
+        // تنظيف الرابط
         if (window.location.hash) {
             history.replaceState(null, '', window.location.pathname);
         }
@@ -101,7 +96,7 @@ async function handleAuthentication(user) {
     }
 }
 
-// ========== UI HELPERS ==========
+// ========== دوال الواجهة المساعدة ==========
 function showLoading() {
     document.getElementById('loadingScreen').classList.remove('hidden');
 }
@@ -139,18 +134,18 @@ async function showApp() {
     document.getElementById('authScreen').classList.add('hidden');
     document.getElementById('appShell').classList.add('active');
 
-    // Show admin elements if user is admin
+    // إظهار أدوات المدير
     if (isAdmin) {
         document.getElementById('adminBadge').classList.remove('hidden');
         document.getElementById('adminNavItem').classList.remove('hidden');
         document.getElementById('fabBtn').classList.remove('hidden');
     }
 
-    // Set initial group to user's group
+    // تحديد المجموعة الافتراضية للعضو
     selectedGroup = userProfile.group_level;
     updateGroupTabs();
 
-    // Load content
+    // تحميل البيانات
     await loadNews();
     await loadEvents();
 }
@@ -162,12 +157,10 @@ function showSnackbar(message) {
     setTimeout(() => snackbar.classList.remove('show'), 3000);
 }
 
-// ========== EVENT LISTENERS ==========
+// ========== الاستماع للأحداث (Events) ==========
 function setupEventListeners() {
-    // Auth form
     document.getElementById('authForm').addEventListener('submit', handleLogin);
 
-    // Group tabs
     document.querySelectorAll('.group-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             selectedGroup = tab.dataset.group;
@@ -177,19 +170,15 @@ function setupEventListeners() {
         });
     });
 
-    // Bottom nav
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', () => {
             const sectionId = item.dataset.section;
             switchSection(sectionId);
-            
-            // Update active nav
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             item.classList.add('active');
         });
     });
 
-    // Modal close on outside click
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) {
@@ -204,12 +193,13 @@ function updateGroupTabs() {
         tab.classList.toggle('active', tab.dataset.group === selectedGroup);
     });
 
-    // Update badges
     const groupInfo = GROUPS[selectedGroup];
-    document.getElementById('newsGroupBadge').textContent = groupInfo.name;
-    document.getElementById('newsGroupBadge').className = `group-badge ${selectedGroup}`;
-    document.getElementById('calendarGroupBadge').textContent = groupInfo.name;
-    document.getElementById('calendarGroupBadge').className = `group-badge ${selectedGroup}`;
+    if(document.getElementById('newsGroupBadge')) {
+        document.getElementById('newsGroupBadge').textContent = groupInfo.name;
+        document.getElementById('newsGroupBadge').className = `group-badge ${selectedGroup}`;
+        document.getElementById('calendarGroupBadge').textContent = groupInfo.name;
+        document.getElementById('calendarGroupBadge').className = `group-badge ${selectedGroup}`;
+    }
 }
 
 function switchSection(sectionId) {
@@ -217,11 +207,12 @@ function switchSection(sectionId) {
     document.getElementById(sectionId).classList.add('active');
 }
 
-// ========== AUTHENTICATION ==========
+// ========== تسجيل الدخول ==========
 async function handleLogin(e) {
     e.preventDefault();
     
-    const email = document.getElementById('emailInput').value.trim();
+    // تحويل الإيميل لأحرف صغيرة لمنع مشاكل المطابقة
+    const email = document.getElementById('emailInput').value.trim().toLowerCase();
     const loginBtn = document.getElementById('loginBtn');
     
     if (!email) return;
@@ -230,8 +221,8 @@ async function handleLogin(e) {
     loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جارٍ الإرسال...';
 
     try {
-        // Check whitelist first
-        const { data: allowed, error: checkError } = await supabase
+        // 1. التحقق هل هو موجود في القائمة البيضاء أولاً
+        const { data: allowed, error: checkError } = await sb
             .from('allowed_users')
             .select('email')
             .eq('email', email)
@@ -242,11 +233,11 @@ async function handleLogin(e) {
             return;
         }
 
-        // Send magic link
-        const { error } = await supabase.auth.signInWithOtp({
+        // 2. إرسال الرابط السحري
+        const { error } = await sb.auth.signInWithOtp({
             email: email,
             options: {
-                emailRedirectTo: window.location.origin + window.location.pathname
+                emailRedirectTo: window.location.origin // العودة لنفس الصفحة
             }
         });
 
@@ -266,12 +257,11 @@ async function handleLogin(e) {
 async function handleLogout() {
     if (!confirm('هل تريد تسجيل الخروج؟')) return;
     
-    await supabase.auth.signOut();
+    await sb.auth.signOut();
     currentUser = null;
     userProfile = null;
     isAdmin = false;
     
-    // Reset UI
     document.getElementById('adminBadge').classList.add('hidden');
     document.getElementById('adminNavItem').classList.add('hidden');
     document.getElementById('fabBtn').classList.add('hidden');
@@ -280,19 +270,18 @@ async function handleLogout() {
     resetAuth();
 }
 
-// ========== NEWS FEED ==========
+// ========== الأخبار (News) ==========
 async function loadNews() {
     const container = document.getElementById('newsList');
     container.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>جارٍ التحميل...</p></div>';
 
     try {
-        let query = supabase
+        let query = sb
             .from('posts')
             .select('*')
             .order('pinned', { ascending: false })
             .order('created_at', { ascending: false });
 
-        // Filter by group (admins see selected group, members see their group)
         if (!isAdmin) {
             query = query.or(`group_level.eq.${userProfile.group_level},group_level.eq.all`);
         } else {
@@ -323,7 +312,7 @@ async function loadNews() {
 
 function createPostCard(post) {
     const date = formatDate(post.created_at);
-    const groupInfo = GROUPS[post.group_level];
+    const groupInfo = GROUPS[post.group_level] || GROUPS['all'];
     
     return `
         <div class="card ${post.pinned ? 'pinned' : ''}" data-id="${post.id}">
@@ -333,7 +322,7 @@ function createPostCard(post) {
                 </div>
                 <div class="card-meta">
                     <div class="card-author">
-                        ${post.author_name}
+                        ${post.author_name || 'الإدارة'}
                         ${post.pinned ? '<span class="pin-badge">مثبت</span>' : ''}
                     </div>
                     <div class="card-date">${date}</div>
@@ -368,7 +357,7 @@ async function submitPost() {
     }
 
     try {
-        const { error } = await supabase.from('posts').insert({
+        const { error } = await sb.from('posts').insert({
             title: title,
             content: content,
             group_level: group,
@@ -394,7 +383,7 @@ async function deletePost(id) {
     if (!confirm('هل تريد حذف هذا الإعلان؟')) return;
 
     try {
-        const { error } = await supabase.from('posts').delete().eq('id', id);
+        const { error } = await sb.from('posts').delete().eq('id', id);
         if (error) throw error;
 
         showSnackbar('تم الحذف');
@@ -406,19 +395,18 @@ async function deletePost(id) {
     }
 }
 
-// ========== CALENDAR EVENTS ==========
+// ========== الرزنامة (Calendar) ==========
 async function loadEvents() {
     const container = document.getElementById('eventsList');
     container.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>جارٍ التحميل...</p></div>';
 
     try {
-        let query = supabase
+        let query = sb
             .from('calendar_events')
             .select('*')
             .gte('event_date', new Date().toISOString().split('T')[0])
             .order('event_date', { ascending: true });
 
-        // Filter by group
         if (!isAdmin) {
             query = query.or(`group_level.eq.${userProfile.group_level},group_level.eq.all`);
         } else {
@@ -451,7 +439,7 @@ function createEventCard(event) {
     const date = new Date(event.event_date);
     const day = date.getDate();
     const month = date.toLocaleDateString('ar', { month: 'short' });
-    const groupInfo = GROUPS[event.group_level];
+    const groupInfo = GROUPS[event.group_level] || GROUPS['all'];
 
     return `
         <div class="event-card" data-id="${event.id}">
@@ -493,7 +481,7 @@ async function submitEvent() {
     }
 
     try {
-        const { error } = await supabase.from('calendar_events').insert({
+        const { error } = await sb.from('calendar_events').insert({
             title: title,
             description: description || null,
             event_date: eventDate,
@@ -520,7 +508,7 @@ async function deleteEvent(id) {
     if (!confirm('هل تريد حذف هذه الفعالية؟')) return;
 
     try {
-        const { error } = await supabase.from('calendar_events').delete().eq('id', id);
+        const { error } = await sb.from('calendar_events').delete().eq('id', id);
         if (error) throw error;
 
         showSnackbar('تم الحذف');
@@ -532,7 +520,7 @@ async function deleteEvent(id) {
     }
 }
 
-// ========== USER MANAGEMENT ==========
+// ========== إدارة الأعضاء ==========
 async function loadUsersManagement() {
     const container = document.getElementById('usersManagement');
     const list = document.getElementById('usersList');
@@ -541,7 +529,7 @@ async function loadUsersManagement() {
     list.innerHTML = '<div style="padding: 20px; text-align: center;"><i class="fas fa-spinner fa-spin"></i></div>';
 
     try {
-        const { data: users, error } = await supabase
+        const { data: users, error } = await sb
             .from('allowed_users')
             .select('*')
             .order('created_at', { ascending: false });
@@ -562,15 +550,15 @@ async function loadUsersManagement() {
 }
 
 function createUserRow(user) {
-    const initials = user.full_name.charAt(0);
-    const groupInfo = GROUPS[user.group_level];
+    const initials = user.full_name ? user.full_name.charAt(0) : '?';
+    const groupInfo = GROUPS[user.group_level] || GROUPS['bunyan'];
 
     return `
         <div class="user-row">
             <div class="user-avatar">${initials}</div>
             <div class="user-info">
                 <div class="user-name">
-                    ${escapeHtml(user.full_name)}
+                    ${escapeHtml(user.full_name || 'بدون اسم')}
                     ${user.role === 'admin' ? '<span class="role-badge">مشرف</span>' : ''}
                 </div>
                 <div class="user-email">${user.email}</div>
@@ -589,7 +577,7 @@ function createUserRow(user) {
 }
 
 async function submitUser() {
-    const email = document.getElementById('newUserEmail').value.trim();
+    const email = document.getElementById('newUserEmail').value.trim().toLowerCase();
     const name = document.getElementById('newUserName').value.trim();
     const group = document.getElementById('newUserGroup').value;
     const role = document.getElementById('newUserRole').value;
@@ -600,7 +588,7 @@ async function submitUser() {
     }
 
     try {
-        const { error } = await supabase.from('allowed_users').insert({
+        const { error } = await sb.from('allowed_users').insert({
             email: email,
             full_name: name,
             group_level: group,
@@ -626,7 +614,7 @@ async function submitUser() {
 
 async function editUser(id) {
     try {
-        const { data: user, error } = await supabase
+        const { data: user, error } = await sb
             .from('allowed_users')
             .select('*')
             .eq('id', id)
@@ -660,7 +648,7 @@ async function updateUser() {
     }
 
     try {
-        const { error } = await supabase
+        const { error } = await sb
             .from('allowed_users')
             .update({
                 full_name: name,
@@ -686,7 +674,7 @@ async function deleteUser(id) {
     if (!confirm('هل تريد حذف هذا العضو؟')) return;
 
     try {
-        const { error } = await supabase.from('allowed_users').delete().eq('id', id);
+        const { error } = await sb.from('allowed_users').delete().eq('id', id);
         if (error) throw error;
 
         showSnackbar('تم الحذف');
@@ -698,7 +686,7 @@ async function deleteUser(id) {
     }
 }
 
-// ========== MODALS ==========
+// ========== الدوال المساعدة والنافذة ==========
 function openModal(modalId) {
     document.getElementById(modalId).classList.add('active');
 }
@@ -708,11 +696,9 @@ function closeModal(modalId) {
 }
 
 function openQuickAction() {
-    // Show post modal by default
     openModal('postModal');
 }
 
-// ========== UTILITIES ==========
 function formatDate(dateString) {
     const date = new Date(dateString);
     const now = new Date();
@@ -731,12 +717,13 @@ function formatDate(dateString) {
 }
 
 function escapeHtml(text) {
+    if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
-// ========== EXPOSE FUNCTIONS GLOBALLY ==========
+// ========== جعل الدوال متاحة للـ HTML ==========
 window.handleLogout = handleLogout;
 window.resetAuth = resetAuth;
 window.openModal = openModal;
