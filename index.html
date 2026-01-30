@@ -3,403 +3,232 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#1A73E8">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>منصة رواحل | Rawahel</title>
-    
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Icons -->
+    <title>منصة رواحل</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
-    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- Styles -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- ========== LOADING SCREEN ========== -->
     <div class="loading-screen" id="loadingScreen">
-        <div class="loading-logo">
-            <i class="fas fa-hands-holding-heart"></i>
-        </div>
-        <div class="loading-spinner"></div>
-        <p>جارٍ التحميل...</p>
+        <div class="loading-logo"><i class="fas fa-hands-holding-heart"></i></div>
+        <div class="spinner"></div>
     </div>
 
-    <!-- ========== AUTH SCREEN ========== -->
     <div class="auth-screen hidden" id="authScreen">
-        <div class="auth-container">
-            <div class="auth-header">
-                <div class="auth-logo">
-                    <i class="fas fa-hands-holding-heart"></i>
-                </div>
-                <h1>منصة رواحل</h1>
-                <p>الدخول عبر البريد الإلكتروني</p>
-            </div>
-
-            <!-- Login Form -->
+        <div class="auth-box">
+            <div class="logo-circle"><i class="fas fa-mosque"></i></div>
+            <h1>منصة رواحل</h1>
+            <p>بوابتك للتواصل والنمو</p>
+            
             <form id="authForm">
-                <div class="form-group">
-                    <label>البريد الإلكتروني</label>
-                    <input type="email" class="form-input" id="emailInput" placeholder="example@email.com" required>
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="emailInput" placeholder="البريد الإلكتروني" required>
                 </div>
-                <button type="submit" class="btn btn-primary btn-block" id="loginBtn">
-                    <i class="fas fa-paper-plane"></i>
-                    إرسال رابط الدخول
+                <button type="submit" class="btn-primary" id="loginBtn">
+                    <span>إرسال رابط الدخول</span>
+                    <i class="fas fa-arrow-left"></i>
                 </button>
             </form>
-
-            <!-- Success Message -->
-            <div class="auth-message success hidden" id="authSuccess">
-                <div class="icon">
-                    <i class="fas fa-check"></i>
-                </div>
-                <h2>تم إرسال الرابط!</h2>
-                <p>تفقد بريدك الإلكتروني واضغط على الرابط للدخول</p>
-                <button class="btn btn-outline" onclick="resetAuth()">
-                    <i class="fas fa-redo"></i>
-                    إعادة المحاولة
-                </button>
+            
+            <div class="auth-msg hidden" id="authSuccess">
+                <i class="fas fa-check-circle"></i>
+                <h3>تم الإرسال!</h3>
+                <p>تفقد بريدك الإلكتروني الآن</p>
+                <button onclick="resetAuth()" class="btn-text">إعادة المحاولة</button>
             </div>
 
-            <!-- Error Message -->
-            <div class="auth-message error hidden" id="authError">
-                <div class="icon">
-                    <i class="fas fa-lock"></i>
-                </div>
-                <h2>الوصول مقيد</h2>
-                <p>هذه المنصة مخصصة لأعضاء رواحل فقط</p>
-                <button class="btn btn-outline" onclick="resetAuth()">
-                    <i class="fas fa-redo"></i>
-                    المحاولة ببريد آخر
-                </button>
+            <div class="auth-msg error hidden" id="authError">
+                <i class="fas fa-lock"></i>
+                <h3>غير مصرح</h3>
+                <p>هذه المنصة للأعضاء المسجلين فقط</p>
+                <button onclick="resetAuth()" class="btn-text">جرب بريداً آخر</button>
             </div>
         </div>
     </div>
 
-    <!-- ========== APP SHELL ========== -->
     <div class="app-shell" id="appShell">
-        <!-- Header -->
-        <header class="app-header">
-            <span class="admin-badge hidden" id="adminBadge">مشرف</span>
-            <h1 class="header-title">رواحل</h1>
-            <div class="header-actions">
-                <button class="btn-icon" onclick="handleLogout()" title="خروج">
-                    <i class="fas fa-sign-out-alt"></i>
+        <header>
+            <div class="header-content">
+                <h2>رواحل</h2>
+                <div class="header-actions">
+                    <span id="adminBadge" class="badge-admin hidden">مشرف</span>
+                    <button onclick="handleLogout()" class="icon-btn"><i class="fas fa-power-off"></i></button>
+                </div>
+            </div>
+            
+            <div class="tabs-container">
+                <button class="tab-btn active" data-group="bunyan">
+                    <i class="fas fa-seedling"></i> بنيان
+                </button>
+                <button class="tab-btn" data-group="rawasi">
+                    <i class="fas fa-mountain"></i> رواسي
+                </button>
+                <button class="tab-btn" data-group="rasukh">
+                    <i class="fas fa-graduation-cap"></i> رسوخ
                 </button>
             </div>
         </header>
 
-        <!-- Group Tabs -->
-        <nav class="group-tabs" id="groupTabs">
-            <button class="group-tab tab-bunyan active" data-group="bunyan">
-                <i class="fas fa-seedling"></i>
-                <span>بنيان</span>
-            </button>
-            <button class="group-tab tab-rawasi" data-group="rawasi">
-                <i class="fas fa-mountain"></i>
-                <span>رواسي</span>
-            </button>
-            <button class="group-tab tab-rasukh" data-group="rasukh">
-                <i class="fas fa-graduation-cap"></i>
-                <span>رسوخ</span>
-            </button>
-        </nav>
+        <main class="content-area">
+            <section id="newsSection" class="section active fade-in">
+                <div class="section-title">
+                    <h3>📢 آخر المستجدات</h3>
+                </div>
+                <div id="newsList" class="cards-grid"></div>
+            </section>
 
-        <!-- Main Content -->
-        <main class="app-content">
-            <div class="content-container">
-                <!-- News Section -->
-                <section class="section active" id="newsSection">
-                    <div class="section-header">
-                        <h2 class="section-title">آخر الأخبار</h2>
-                        <span class="group-badge" id="newsGroupBadge">بنيان</span>
-                    </div>
-                    <div id="newsList">
-                        <div class="empty-state">
-                            <i class="fas fa-newspaper"></i>
-                            <p>جارٍ تحميل الأخبار...</p>
-                        </div>
-                    </div>
-                </section>
+            <section id="calendarSection" class="section fade-in">
+                <div class="section-title">
+                    <h3>📅 الرزنامة القادمة</h3>
+                </div>
+                <div id="eventsList" class="cards-grid"></div>
+            </section>
 
-                <!-- Calendar Section -->
-                <section class="section" id="calendarSection">
-                    <div class="section-header">
-                        <h2 class="section-title">الفعاليات</h2>
-                        <span class="group-badge" id="calendarGroupBadge">بنيان</span>
+            <section id="awradSection" class="section fade-in">
+                <div class="section-title">
+                    <h3>📿 وردك اليومي</h3>
+                </div>
+                <div class="awrad-grid">
+                    <div class="card awrad-card morning">
+                        <div class="icon"><i class="fas fa-sun"></i></div>
+                        <h4>أذكار الصباح</h4>
+                        <button onclick="openModal('modalMorning')" class="btn-small">قراءة</button>
                     </div>
-                    <div id="eventsList">
-                        <div class="empty-state">
-                            <i class="fas fa-calendar"></i>
-                            <p>جارٍ تحميل الفعاليات...</p>
-                        </div>
+                    <div class="card awrad-card evening">
+                        <div class="icon"><i class="fas fa-moon"></i></div>
+                        <h4>أذكار المساء</h4>
+                        <button onclick="openModal('modalEvening')" class="btn-small">قراءة</button>
                     </div>
-                </section>
+                    <div class="card awrad-card quran">
+                        <div class="icon"><i class="fas fa-book-open"></i></div>
+                        <h4>ورد القرآن</h4>
+                        <p>صفحتان بعد كل صلاة</p>
+                    </div>
+                </div>
+            </section>
 
-                <!-- Admin Section -->
-                <section class="section admin-section" id="adminSection">
-                    <div class="admin-header">
-                        <h2><i class="fas fa-shield-halved"></i> مركز التحكم</h2>
-                        <p>إدارة المنصة والمستخدمين</p>
+            <section id="adminSection" class="section fade-in">
+                <div class="admin-dashboard">
+                    <h3>لوحة التحكم</h3>
+                    <div class="admin-actions">
+                        <button onclick="openModal('postModal')" class="admin-btn">
+                            <i class="fas fa-pen"></i> نشر خبر
+                        </button>
+                        <button onclick="openModal('eventModal')" class="admin-btn">
+                            <i class="fas fa-calendar-plus"></i> إضافة حدث
+                        </button>
+                        <button onclick="openModal('userModal')" class="admin-btn">
+                            <i class="fas fa-user-plus"></i> إضافة عضو
+                        </button>
+                        <button onclick="loadUsersManagement()" class="admin-btn secondary">
+                            <i class="fas fa-users-cog"></i> إدارة الأعضاء
+                        </button>
                     </div>
-
-                    <div class="admin-grid">
-                        <div class="admin-tile" onclick="openModal('postModal')">
-                            <i class="fas fa-plus-circle"></i>
-                            <span>إضافة إعلان</span>
-                        </div>
-                        <div class="admin-tile" onclick="openModal('eventModal')">
-                            <i class="fas fa-calendar-plus"></i>
-                            <span>إضافة فعالية</span>
-                        </div>
-                        <div class="admin-tile" onclick="openModal('userModal')">
-                            <i class="fas fa-user-plus"></i>
-                            <span>إضافة عضو</span>
-                        </div>
-                        <div class="admin-tile" onclick="loadUsersManagement()">
-                            <i class="fas fa-users-cog"></i>
-                            <span>إدارة الأعضاء</span>
-                        </div>
+                    <div id="usersManagement" class="hidden user-list-container">
+                        <div id="usersList"></div>
                     </div>
-
-                    <!-- Users Management -->
-                    <div id="usersManagement" class="hidden">
-                        <h3 style="margin-bottom: 16px; font-size: 16px;">قائمة الأعضاء</h3>
-                        <div class="user-table" id="usersList"></div>
-                    </div>
-                </section>
-            </div>
+                </div>
+            </section>
         </main>
 
-        <!-- Bottom Navigation -->
         <nav class="bottom-nav">
             <button class="nav-item active" data-section="newsSection">
-                <i class="fas fa-newspaper"></i>
-                <span>الأخبار</span>
+                <i class="fas fa-home"></i>
+                <span>الرئيسية</span>
             </button>
             <button class="nav-item" data-section="calendarSection">
                 <i class="fas fa-calendar-alt"></i>
-                <span>الفعاليات</span>
+                <span>الرزنامة</span>
             </button>
-            <button class="nav-item admin-only hidden" id="adminNavItem" data-section="adminSection">
-                <i class="fas fa-shield-halved"></i>
-                <span>التحكم</span>
+            <button class="nav-item" data-section="awradSection">
+                <i class="fas fa-book-open"></i>
+                <span>الأوراد</span>
+            </button>
+            <button class="nav-item hidden" id="adminNavItem" data-section="adminSection">
+                <i class="fas fa-shield-alt"></i>
+                <span>الإدارة</span>
             </button>
         </nav>
-
-        <!-- FAB (Admin only) -->
-        <button class="btn-fab hidden" id="fabBtn" onclick="openQuickAction()">
-            <i class="fas fa-plus"></i>
-        </button>
     </div>
 
-    <!-- ========== MODALS ========== -->
-    
-    <!-- Add Post Modal -->
     <div class="modal-overlay" id="postModal">
         <div class="modal">
-            <div class="modal-handle"></div>
-            <div class="modal-header">
-                <h3 class="modal-title">إضافة إعلان جديد</h3>
-                <button class="btn-icon" onclick="closeModal('postModal')">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="postForm">
-                    <div class="form-group">
-                        <label>العنوان</label>
-                        <input type="text" class="form-input" id="postTitle" required>
-                    </div>
-                    <div class="form-group">
-                        <label>المحتوى</label>
-                        <textarea class="form-textarea" id="postContent" rows="4" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>المجموعة</label>
-                        <select class="form-select" id="postGroup">
-                            <option value="all">جميع المجموعات</option>
-                            <option value="bunyan">بنيان</option>
-                            <option value="rawasi">رواسي</option>
-                            <option value="rasukh">رسوخ</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" id="postPinned">
-                            تثبيت الإعلان
-                        </label>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-text" onclick="closeModal('postModal')">إلغاء</button>
-                <button class="btn btn-primary" onclick="submitPost()">
-                    <i class="fas fa-check"></i>
-                    نشر
-                </button>
+            <h3>خبر جديد</h3>
+            <input type="text" id="postTitle" placeholder="العنوان" class="input-field">
+            <textarea id="postContent" placeholder="التفاصيل..." class="input-field"></textarea>
+            <select id="postGroup" class="input-field">
+                <option value="all">الكل</option>
+                <option value="bunyan">بنيان</option>
+                <option value="rawasi">رواسي</option>
+                <option value="rasukh">رسوخ</option>
+            </select>
+            <label class="checkbox-label"><input type="checkbox" id="postPinned"> تثبيت الخبر</label>
+            <div class="modal-actions">
+                <button onclick="closeModal('postModal')" class="btn-text">إلغاء</button>
+                <button onclick="submitPost()" class="btn-primary">نشر</button>
             </div>
         </div>
     </div>
 
-    <!-- Add Event Modal -->
     <div class="modal-overlay" id="eventModal">
         <div class="modal">
-            <div class="modal-handle"></div>
-            <div class="modal-header">
-                <h3 class="modal-title">إضافة فعالية</h3>
-                <button class="btn-icon" onclick="closeModal('eventModal')">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="eventForm">
-                    <div class="form-group">
-                        <label>عنوان الفعالية</label>
-                        <input type="text" class="form-input" id="eventTitle" required>
-                    </div>
-                    <div class="form-group">
-                        <label>الوصف</label>
-                        <textarea class="form-textarea" id="eventDescription" rows="3"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>التاريخ</label>
-                        <input type="date" class="form-input" id="eventDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label>الوقت</label>
-                        <input type="time" class="form-input" id="eventTime">
-                    </div>
-                    <div class="form-group">
-                        <label>المكان</label>
-                        <input type="text" class="form-input" id="eventLocation">
-                    </div>
-                    <div class="form-group">
-                        <label>المجموعة</label>
-                        <select class="form-select" id="eventGroup">
-                            <option value="all">جميع المجموعات</option>
-                            <option value="bunyan">بنيان</option>
-                            <option value="rawasi">رواسي</option>
-                            <option value="rasukh">رسوخ</option>
-                        </select>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-text" onclick="closeModal('eventModal')">إلغاء</button>
-                <button class="btn btn-primary" onclick="submitEvent()">
-                    <i class="fas fa-check"></i>
-                    إضافة
-                </button>
+            <h3>حدث جديد</h3>
+            <input type="text" id="eventTitle" placeholder="العنوان" class="input-field">
+            <input type="date" id="eventDate" class="input-field">
+            <input type="time" id="eventTime" class="input-field">
+            <input type="text" id="eventLocation" placeholder="المكان" class="input-field">
+            <select id="eventGroup" class="input-field">
+                <option value="all">الكل</option>
+                <option value="bunyan">بنيان</option>
+                <option value="rawasi">رواسي</option>
+                <option value="rasukh">رسوخ</option>
+            </select>
+            <div class="modal-actions">
+                <button onclick="closeModal('eventModal')" class="btn-text">إلغاء</button>
+                <button onclick="submitEvent()" class="btn-primary">حفظ</button>
             </div>
         </div>
     </div>
 
-    <!-- Add User Modal -->
     <div class="modal-overlay" id="userModal">
         <div class="modal">
-            <div class="modal-handle"></div>
-            <div class="modal-header">
-                <h3 class="modal-title">إضافة عضو جديد</h3>
-                <button class="btn-icon" onclick="closeModal('userModal')">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="userForm">
-                    <div class="form-group">
-                        <label>البريد الإلكتروني</label>
-                        <input type="email" class="form-input" id="newUserEmail" required>
-                    </div>
-                    <div class="form-group">
-                        <label>الاسم الكامل</label>
-                        <input type="text" class="form-input" id="newUserName" required>
-                    </div>
-                    <div class="form-group">
-                        <label>المجموعة</label>
-                        <select class="form-select" id="newUserGroup">
-                            <option value="bunyan">بنيان</option>
-                            <option value="rawasi">رواسي</option>
-                            <option value="rasukh">رسوخ</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>الدور</label>
-                        <select class="form-select" id="newUserRole">
-                            <option value="member">عضو</option>
-                            <option value="admin">مشرف</option>
-                        </select>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-text" onclick="closeModal('userModal')">إلغاء</button>
-                <button class="btn btn-primary" onclick="submitUser()">
-                    <i class="fas fa-check"></i>
-                    إضافة
-                </button>
+            <h3>عضو جديد</h3>
+            <input type="email" id="newUserEmail" placeholder="البريد" class="input-field">
+            <input type="text" id="newUserName" placeholder="الاسم" class="input-field">
+            <select id="newUserGroup" class="input-field">
+                <option value="bunyan">بنيان</option>
+                <option value="rawasi">رواسي</option>
+                <option value="rasukh">رسوخ</option>
+            </select>
+            <select id="newUserRole" class="input-field">
+                <option value="member">عضو</option>
+                <option value="admin">مشرف</option>
+            </select>
+            <div class="modal-actions">
+                <button onclick="closeModal('userModal')" class="btn-text">إلغاء</button>
+                <button onclick="submitUser()" class="btn-primary">إضافة</button>
             </div>
         </div>
     </div>
 
-    <!-- Edit User Modal -->
-    <div class="modal-overlay" id="editUserModal">
+    <div class="modal-overlay" id="modalMorning">
         <div class="modal">
-            <div class="modal-handle"></div>
-            <div class="modal-header">
-                <h3 class="modal-title">تعديل العضو</h3>
-                <button class="btn-icon" onclick="closeModal('editUserModal')">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="editUserForm">
-                    <input type="hidden" id="editUserId">
-                    <div class="form-group">
-                        <label>البريد الإلكتروني</label>
-                        <input type="email" class="form-input" id="editUserEmail" disabled>
-                    </div>
-                    <div class="form-group">
-                        <label>الاسم الكامل</label>
-                        <input type="text" class="form-input" id="editUserName" required>
-                    </div>
-                    <div class="form-group">
-                        <label>المجموعة</label>
-                        <select class="form-select" id="editUserGroup">
-                            <option value="bunyan">بنيان</option>
-                            <option value="rawasi">رواسي</option>
-                            <option value="rasukh">رسوخ</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>الدور</label>
-                        <select class="form-select" id="editUserRole">
-                            <option value="member">عضو</option>
-                            <option value="admin">مشرف</option>
-                        </select>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-text" onclick="closeModal('editUserModal')">إلغاء</button>
-                <button class="btn btn-primary" onclick="updateUser()">
-                    <i class="fas fa-check"></i>
-                    حفظ
-                </button>
-            </div>
+            <h3>أذكار الصباح</h3>
+            <p>أصبحنا وأصبح الملك لله...</p>
+            <button onclick="closeModal('modalMorning')" class="btn-primary full-width">إغلاق</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="modalEvening">
+        <div class="modal">
+            <h3>أذكار المساء</h3>
+            <p>أمسينا وأمسى الملك لله...</p>
+            <button onclick="closeModal('modalEvening')" class="btn-primary full-width">إغلاق</button>
         </div>
     </div>
 
-    <!-- Snackbar -->
-    <div class="snackbar" id="snackbar">تم بنجاح</div>
-
+    <div class="snackbar" id="snackbar">تم!</div>
     <script src="app.js"></script>
 </body>
 </html>
